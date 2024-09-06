@@ -16,7 +16,14 @@
  */
 package site.ycsb.db.flavors;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.List;
+
+import site.ycsb.db.IndexDescriptor;
 import site.ycsb.db.StatementType;
+import site.ycsb.wrappers.Comparison;
+import site.ycsb.wrappers.DatabaseField;
 
 /**
  * DBFlavor captures minor differences in syntax and behavior among JDBC implementations and SQL
@@ -26,6 +33,7 @@ public abstract class DBFlavor {
 
   enum DBName {
     DEFAULT,
+    MYSQL,
     PHOENIX
   }
 
@@ -37,10 +45,18 @@ public abstract class DBFlavor {
 
   public static DBFlavor fromJdbcUrl(String url) {
     if (url.startsWith("jdbc:phoenix")) {
+      System.err.println("DBFlavor: using PhoenixFlavor");
       return new PhoenixDBFlavor();
     }
+    if(url.startsWith("jdbc:mysql")) {
+      System.err.println("DBFlavor: using MySqlFlavor");
+      return new MySqlFlavor();
+    }
+    System.err.println("DBFlavor: using default flavor");
     return new DefaultDBFlavor();
   }
+
+  public abstract void createDbAndSchema(String tableName, List<Connection> conns)  throws SQLException;
 
   /**
    * Create and return a SQL statement for inserting data.
@@ -67,4 +83,11 @@ public abstract class DBFlavor {
    */
   public abstract String createScanStatement(StatementType scanType, String key,
                                              boolean sqlserverScans, boolean sqlansiScans);
+
+  /* Create and return an SQL statement for updating one element */
+  public abstract String createUpdateOneStatement(String tablename, List<Comparison> filters, List<DatabaseField> fields);
+  /**
+   * Create SQL statements for indexes 
+   */
+  public abstract List<String> buildIndexCommands(String table, List<IndexDescriptor> indexes);
 }

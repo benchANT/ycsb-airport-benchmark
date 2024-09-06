@@ -47,17 +47,6 @@ public final class JdbcQueryHelper {
         return FilterBuilder.bindFilterValues(statement, currentIndex, filters);
     }
 
-    static String createUpdateOneStatement(String tablename, List<Comparison> filters, List<DatabaseField> fields) {
-        final String template = "UPDATE %1$s SET %2$s WHERE %3$s = (%4$s)";
-        // https://dba.stackexchange.com/questions/69471/postgres-update-limit-1
-        final String innerTemplate = "SELECT %1$s from %2$s WHERE %3$s LIMIT 1 FOR UPDATE SKIP LOCKED";
-        
-        String setString = FilterBuilder.buildConcatenatedPlaceholderSet(fields);
-        String filterString = FilterBuilder.buildConcatenatedPlaceholderFilter(filters);
-        final String inner = String.format(innerTemplate, JdbcDBConstants.PRIMARY_KEY, tablename, filterString);
-        return String.format(template, tablename, setString, JdbcDBConstants.PRIMARY_KEY, inner);
-    }
-
     private JdbcQueryHelper() {
 
     }
