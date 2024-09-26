@@ -52,13 +52,6 @@ import static site.ycsb.db.JdbcDBConstants.*;
  * Therefore, only one index on the primary key is needed.
  */
 public class JdbcDBClient extends DB implements IndexableDB {
-  static class IndexDescriptor {
-    String name;
-    String method;
-    String order;
-    boolean concurrent;
-    List<String> columnNames = new ArrayList<>();
-  }
 
   static enum TableInitStatus {
     ERROR,
@@ -76,6 +69,7 @@ public class JdbcDBClient extends DB implements IndexableDB {
   private Properties props;
   private int jdbcFetchSize;
   private int batchSize;
+  private boolean droptable;
   private boolean autoCommit;
   private boolean batchUpdates;
   private static final String DEFAULT_PROP = "";
@@ -181,6 +175,8 @@ public class JdbcDBClient extends DB implements IndexableDB {
     this.autoCommit = getBoolProperty(props, JDBC_AUTO_COMMIT, true);
     this.batchUpdates = getBoolProperty(props, JDBC_BATCH_UPDATES, false);
 
+    this.droptable = getBoolProperty(props, JDBC_DROP_TABLE, false);
+    System.err.println("droptable initialized to " + droptable);
     try {
 //  The SQL Syntax for Scan depends on the DB engine
 //  - SQL:2008 standard: FETCH FIRST n ROWS after the ORDER BY
@@ -242,6 +238,7 @@ public class JdbcDBClient extends DB implements IndexableDB {
       throw new DBException(e);
     }
     boolean initDb = "true".equalsIgnoreCase(props.getProperty(JDBC_INIT_TABLE, "false"));
+    boolean createIndexes = "true".equalsIgnoreCase(props.getProperty(JDBC_INIT_INDEXES, "true"));
     useTypedFields = "true".equalsIgnoreCase(props.getProperty(TYPED_FIELDS_PROPERTY));
     List<IndexDescriptor> indexes = JdbcDBInitHelper.getIndexList(getProperties());
     final String table = props.getProperty(CoreConstants.TABLENAME_PROPERTY, CoreConstants.TABLENAME_PROPERTY_DEFAULT);
@@ -253,16 +250,24 @@ public class JdbcDBClient extends DB implements IndexableDB {
       if(tableInitStatus == TableInitStatus.VOID) {
         // it is our task to init the table
         try {
-          if(initDb) {
-            JdbcDBInitHelper.createDbAndSchema(table, conns);
+          if(droptable) {
+            System.err.println("dropping table, because droptable is " + droptable);
+            JdbcDBInitHelper.dropTable(table, conns);
           }
-          // build indexes only once, but once per connection
-          List<String> indexCommands = JdbcDBInitHelper.buildIndexCommands(table, indexes);
-          for(Connection c : conns) {
-            for(String cmd : indexCommands) {
-              Statement stmt = c.createStatement();
-              int ret = stmt.executeUpdate(cmd);
-              System.out.println("created index: " + cmd + ": " + "/" + ret);
+          if(initDb) {
+            System.err.println("initializing table, because initDb is " + initDb);
+            dbFlavor.createDbAndSchema(table, conns);
+          }
+          if(createIndexes) {
+            // build indexes only once, but once per connection
+            List<String> indexCommands = this.dbFlavor.buildIndexCommands(table, indexes);
+            for(Connection c : conns) {
+              for(String cmd : indexCommands) {
+                System.out.println("creating index started: " + cmd);
+                Statement stmt = c.createStatement();
+                int ret = stmt.executeUpdate(cmd);
+                System.out.println("creating index done: " + ret);
+              }
             }
           }
           tableInitStatus = TableInitStatus.COMPLETE;
@@ -382,7 +387,7 @@ public class JdbcDBClient extends DB implements IndexableDB {
     if(debug){
       System.err.println("updateOne query not found: creating it");
     }
-    String query = JdbcQueryHelper.createUpdateOneStatement(tablename, filters, fields);
+    String query = dbFlavor.createUpdateOneStatement(tablename, filters, fields);
     synchronized(UPDATE_ONE_STATEMENTS) {
       ret = UPDATE_ONE_STATEMENTS.get(container);
       if(ret != null) return ret;

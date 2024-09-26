@@ -18,7 +18,6 @@ package site.ycsb.db.flavors;
 
 import static site.ycsb.db.JdbcDBConstants.PRIMARY_KEY;
 
-import site.ycsb.db.JdbcDBClient;
 import site.ycsb.db.StatementType;
 
 /**

@@ -36,11 +36,11 @@ public final class FilterBuilder {
     
     private static java.util.Base64.Encoder encoder = java.util.Base64.getEncoder();
 
-    static String buildConcatenatedPlaceholderSet(List<DatabaseField> fields) {
+    public static String buildConcatenatedPlaceholderSet(List<DatabaseField> fields) {
         return innerBuildConcatenatedSet(fields, true);
     }
 
-    static String buildConcatenatedSet(List<DatabaseField> fields) {
+    public static String buildConcatenatedSet(List<DatabaseField> fields) {
         return innerBuildConcatenatedSet(fields, false);
     }
 
@@ -129,7 +129,7 @@ public final class FilterBuilder {
         return currentIndex;
     }
 
-    static String buildConcatenatedPlaceholderFilter(List<Comparison> filters) {
+    public static String buildConcatenatedPlaceholderFilter(List<Comparison> filters) {
         return buildConcatenatedInnerFilter(filters, true);
     }
 

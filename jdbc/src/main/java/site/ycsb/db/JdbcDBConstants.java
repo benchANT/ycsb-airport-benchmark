@@ -40,6 +40,9 @@ public final class JdbcDBConstants {
   
     /** The JDBC fetch size hinted to the driver. */
     public static final String JDBC_INIT_TABLE = "jdbc.inittable";
+
+    /** Attempt to create indexes as specified. */
+    public static final String JDBC_INIT_INDEXES = "jdbc.initindexes";
   
     /** The JDBC connection auto-commit property for the driver. */
     public static final String JDBC_AUTO_COMMIT = "jdbc.autocommit";
@@ -48,6 +51,9 @@ public final class JdbcDBConstants {
     
     /** The primary key in the user table. */
     public static final String PRIMARY_KEY = "YCSB_KEY";
+    
+    /** Clear database before re-initializing */
+    public static final String JDBC_DROP_TABLE = "jdbc.droptable";
 
     private JdbcDBConstants() {
         // no instances

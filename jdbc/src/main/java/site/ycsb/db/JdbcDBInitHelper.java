@@ -30,25 +30,24 @@ import org.apache.htrace.shaded.fasterxml.jackson.databind.node.BooleanNode;
 import org.apache.htrace.shaded.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.htrace.shaded.fasterxml.jackson.databind.node.TextNode;
 
-import site.ycsb.db.JdbcDBClient.IndexDescriptor;
 import site.ycsb.workloads.schema.SchemaHolder;
 import site.ycsb.workloads.schema.SchemaHolder.SchemaColumn;
 import site.ycsb.workloads.schema.SchemaHolder.SchemaColumnKind;
 import site.ycsb.workloads.schema.SchemaHolder.SchemaColumnType;
 
-final class JdbcDBInitHelper {
+public final class JdbcDBInitHelper {
 
     private static final SchemaHolder schema = SchemaHolder.INSTANCE;
 
-    static void createTable(String tableName, List<Connection> conns) throws SQLException {
+    public static void createTable(String tableName, List<Connection> conns, String textKeyType) throws SQLException {
         final StringBuilder b = new StringBuilder("CREATE TABLE ");
         b.append(tableName).append(" ( ");
         // this is YCSB nonetheless, so we need an ID
-        b.append( JdbcDBConstants.PRIMARY_KEY).append(" TEXT PRIMARY KEY");
+        b.append( JdbcDBConstants.PRIMARY_KEY).append(" " + textKeyType + " PRIMARY KEY");
         for(SchemaColumn column : schema.getOrderedListOfColumns()) {
             if(column.getColumnKind() == SchemaColumnKind.SCALAR) {
                 b.append(", ").append(column.getColumnName()).append(" ");
-                if(column.getColumnType() == SchemaColumnType.TEXT) b.append(" TEXT ");
+                if(column.getColumnType() == SchemaColumnType.TEXT) b.append(" " + textKeyType + " ");
                 else if( column.getColumnType() == SchemaColumnType.INT) b.append(" INTEGER ");
                 else if( column.getColumnType() == SchemaColumnType.LONG) b.append(" BIGINT ");
             } else if(column.getColumnKind() == SchemaColumnKind.ARRAY) {
@@ -66,10 +65,15 @@ final class JdbcDBInitHelper {
             stmt.executeUpdate(sql);
         }
     }
-    
-    static void createDbAndSchema(String tableName, List<Connection> conns) throws SQLException {
-        createTable(tableName, conns);
+  
+  public static void dropTable(String tableName, List<Connection> conns) throws SQLException {
+    System.err.println("droppting table");
+    String dropper = "DROP TABLE " + tableName;
+    for(Connection c : conns) {
+      Statement stmt = c.createStatement();
+      stmt.executeUpdate(dropper);
     }
+  }
 
   static List<IndexDescriptor> getIndexList(Properties props) {
     String indexeslist = props.getProperty(JdbcDBConstants.INDEX_LIST_PROPERTY);
@@ -142,58 +146,7 @@ final class JdbcDBInitHelper {
     return retVal;
   }
 
-  static List<String> buildIndexCommands(String table, List<IndexDescriptor> indexes) {
-    if(indexes.size() == 0) {
-      return Collections.emptyList();
-    }
-    System.err.println("indexes: " + indexes.get(0).columnNames);
-    /* 
-     * CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] [ [ IF NOT EXISTS ] name ] ON [ ONLY ] table_name [ USING method ]
-     * ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass [ ( opclass_parameter = value [, ... ] ) ] ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
-     * [ INCLUDE ( column_name [, ...] ) ]
-     * [ NULLS [ NOT ] DISTINCT ]
-     * [ WITH ( storage_parameter [= value] [, ... ] ) ]
-     * [ TABLESPACE tablespace_name ]
-     * [ WHERE predicate ]
-     */
-    List<String> indexCommands = new ArrayList<>();
-    for(IndexDescriptor idx : indexes) {
-      // Our index is not unique, this is not supported
-      StringBuilder b = new StringBuilder("CREATE INDEX ");
-      if(idx.concurrent) {
-        b.append(" CONCURRENTLY ");
-      }
-      if(idx.name != null) {
-        b.append(idx.name);
-      }
-      b.append(" ON ").append(table);
-      // first colum, this is mandatory, we provoke an exception in case it is missing
-      b.append(" ( ");
-      addIndexColumn(idx, idx.columnNames.get(0), b);
-      for(int i = 1; i < idx.columnNames.size(); i++) {
-        b.append(", ");
-        addIndexColumn(idx, idx.columnNames.get(i), b);
-      }
-      b.append(" )");
-      // USING method is not used; it is always the default
-      // INCLUDE is not used for now
-      b.append(" NULLS DISTINCT ");
-      // WITH is not used for now
-      // TABLESPACE is not used for now
-      // WHERE is not used for now
-      indexCommands.add(b.toString());
-    }
-    System.err.println("collected index commands");
-    return indexCommands;
+  private JdbcDBInitHelper() {
+      // private constructor
   }
-  private static void addIndexColumn(IndexDescriptor idx, String column, StringBuilder b) {
-    b.append(column);
-    if(idx.order != null) {
-      b.append(" ").append(idx.order);
-    }
-    b.append(" ");
-  }
-    private JdbcDBInitHelper() {
-        // private constructor
-    }
 }

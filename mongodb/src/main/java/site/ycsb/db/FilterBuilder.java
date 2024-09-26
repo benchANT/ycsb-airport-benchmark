@@ -14,7 +14,7 @@
  */
 package site.ycsb.db;
 
-import static com.mongodb.client.model.Filters.eqFull;
+import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.lte;
 import static com.mongodb.client.model.Filters.and;
 
@@ -61,7 +61,7 @@ public final class FilterBuilder {
     public static Bson buildStringFilter(String fieldName, ComparisonOperator op, String operand) {
         switch (op) {
             case STRING_EQUAL:
-                return eqFull(fieldName, operand);
+                return eq(fieldName, operand);
             default:
                 throw new IllegalArgumentException("no string operator");
         }
